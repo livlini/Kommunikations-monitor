@@ -63,7 +63,7 @@ st.markdown(
         color: #163d73;
         font-size: 25px;
         font-weight: 700;
-        margin-top: 30px;
+        margin-top: 32px;
         margin-bottom: 5px;
     }
 
@@ -73,62 +73,21 @@ st.markdown(
         margin-bottom: 20px;
     }
 
-    /* FLIP CARD */
-
-    .flip-card {
-        background-color: transparent;
-        width: 100%;
-        height: 290px;
-        perspective: 1000px;
-        margin-bottom: 22px;
-    }
-
-    .flip-card-inner {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        transition: transform 0.65s;
-        transform-style: preserve-3d;
-    }
-
-    .flip-card:hover .flip-card-inner {
-        transform: rotateY(180deg);
-    }
-
-    .flip-card-front,
-    .flip-card-back {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-
-        border-radius: 18px;
-        padding: 27px;
-
-        box-sizing: border-box;
-
-        box-shadow:
-            0 6px 18px
-            rgba(22, 61, 115, 0.08);
-    }
-
-    .flip-card-front {
+    .trend-card {
         background: white;
         border: 1px solid #e3eaf3;
-    }
-
-    .flip-card-back {
-        background: #163d73;
-        color: white;
-        transform: rotateY(180deg);
+        border-radius: 18px;
+        padding: 27px;
+        min-height: 225px;
+        box-shadow: 0 6px 18px rgba(22, 61, 115, 0.07);
+        margin-bottom: 10px;
     }
 
     .category-label {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.7px;
+        letter-spacing: 0.8px;
         color: #6282ad;
         margin-bottom: 10px;
     }
@@ -138,54 +97,42 @@ st.markdown(
         font-size: 22px;
         line-height: 1.25;
         font-weight: 700;
-        min-height: 58px;
+        min-height: 55px;
     }
 
     .strength-label {
         color: #7a8797;
-        font-size: 13px;
-        margin-top: 25px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        margin-top: 20px;
     }
 
     .strength-number {
         color: #163d73;
-        font-size: 52px;
+        font-size: 48px;
         font-weight: 750;
-        line-height: 1;
-        margin-top: 4px;
+        line-height: 1.05;
+        margin-top: 3px;
     }
 
-    .wow {
-        margin-top: 16px;
-        font-size: 14px;
+    .strength-max {
+        color: #98a2b3;
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    .metrics-line {
         color: #667085;
-    }
-
-    .back-title {
-        font-size: 19px;
-        font-weight: 700;
-        margin-bottom: 18px;
-    }
-
-    .back-line {
         font-size: 14px;
-        margin-bottom: 9px;
-        opacity: 0.95;
-    }
-
-    .back-total {
-        margin-top: 15px;
-        padding-top: 13px;
-        border-top: 1px solid rgba(255,255,255,0.3);
-        font-size: 15px;
-        font-weight: 700;
+        margin-top: 14px;
     }
 
     .source-box {
         background: white;
         border: 1px solid #e3eaf3;
         border-radius: 14px;
-        padding: 20px 24px;
+        padding: 18px 22px;
         margin-bottom: 10px;
     }
 
@@ -199,6 +146,13 @@ st.markdown(
         color: #667085;
         font-size: 13px;
         margin-top: 3px;
+    }
+
+    div[data-testid="stExpander"] {
+        background: white;
+        border: 1px solid #e3eaf3;
+        border-radius: 12px;
+        margin-bottom: 20px;
     }
 
     </style>
@@ -233,9 +187,7 @@ def load_trends():
     ]
 
     for column in numeric_columns:
-
         if column in df.columns:
-
             df[column] = pd.to_numeric(
                 df[column],
                 errors="coerce",
@@ -278,7 +230,7 @@ st.markdown(
 
 
 # ============================================================
-# NO DATA
+# CHECK DATA
 # ============================================================
 
 if trends.empty:
@@ -291,12 +243,7 @@ if trends.empty:
     st.stop()
 
 
-# ============================================================
-# REMOVE TRENDS WITH NO CURRENT SIGNALS
-#
-# Previous-week trends remain in trends.csv for calculation
-# purposes, but the dashboard focuses on active current trends.
-# ============================================================
+# Only show trends with signals in the latest monitored week
 
 active_trends = trends[
     trends["signals"] > 0
@@ -430,23 +377,22 @@ with st.expander(
 
     st.markdown(
         """
-        **Trend Strength is an internal indicator from 0–100.**
+**Trend Strength is an internal indicator from 0–100.**
 
-        It combines four factors:
+It combines four factors:
 
-        - **Volume — max 30 points:** 1 point per relevant signal/article.
-        - **Week-over-week growth — max 30 points:** measures growth compared with the previous week. +100% or more gives 30 points.
-        - **Source breadth — max 20 points:** 2 points per unique source.
-        - **Relevance — max 20 points:** average relevance score from 0–10, multiplied by 2.
+- **Volume — max 30 points:** 1 point per relevant signal/article.
+- **Week-over-week growth — max 30 points:** compares the latest monitored week with the previous week. +100% or more gives 30 points.
+- **Source breadth — max 20 points:** 2 points per unique source.
+- **Relevance — max 20 points:** average relevance score from 0–10, multiplied by 2.
 
-        The score is designed for this Communication Monitor and is
-        **not an external industry benchmark**.
+The score is designed specifically for this Communication Monitor and is **not an external industry benchmark**.
         """
     )
 
 
 # ============================================================
-# TREND CARDS
+# CURRENT TRENDS
 # ============================================================
 
 st.markdown(
@@ -457,16 +403,19 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Hover over a trend to see the calculation behind its Trend Strength.
+        Strongest communication-relevant signals detected in the latest monitored week.
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 
-# Show maximum 6 strongest current trends
-card_data = active_trends.head(6).reset_index(
-    drop=True
+# Maximum six cards
+
+card_data = (
+    active_trends
+    .head(6)
+    .reset_index(drop=True)
 )
 
 
@@ -481,106 +430,77 @@ def format_wow(value):
     return "0.0%"
 
 
-def trend_card(row):
+def render_card(row):
 
     wow = format_wow(
         row["wow_growth_pct"]
     )
 
-    html = f"""
-    <div class="flip-card">
-        <div class="flip-card-inner">
+    st.markdown(
+        f"""
+        <div class="trend-card">
 
-            <div class="flip-card-front">
-
-                <div class="category-label">
-                    {row["category"]}
-                </div>
-
-                <div class="trend-name">
-                    {row["trend"]}
-                </div>
-
-                <div class="strength-label">
-                    TREND STRENGTH
-                </div>
-
-                <div class="strength-number">
-                    {row["trend_strength"]:.1f}
-                </div>
-
-                <div class="wow">
-                    WoW: {wow}
-                    &nbsp;&nbsp;·&nbsp;&nbsp;
-                    {int(row["signals"])} signals
-                </div>
-
+            <div class="category-label">
+                {row["category"]}
             </div>
 
+            <div class="trend-name">
+                {row["trend"]}
+            </div>
 
-            <div class="flip-card-back">
+            <div class="strength-label">
+                TREND STRENGTH
+            </div>
 
-                <div class="back-title">
-                    Score calculation
-                </div>
+            <div class="strength-number">
+                {row["trend_strength"]:.1f}
+                <span class="strength-max">
+                    / 100
+                </span>
+            </div>
 
-                <div class="back-line">
-                    Volume:
-                    <strong>
-                    {row["volume_points"]:.1f} / 30
-                    </strong>
-                </div>
-
-                <div class="back-line">
-                    Growth:
-                    <strong>
-                    {row["growth_points"]:.1f} / 30
-                    </strong>
-                </div>
-
-                <div class="back-line">
-                    Source breadth:
-                    <strong>
-                    {row["source_points"]:.1f} / 20
-                    </strong>
-                </div>
-
-                <div class="back-line">
-                    Relevance:
-                    <strong>
-                    {row["relevance_points"]:.1f} / 20
-                    </strong>
-                </div>
-
-                <div class="back-line">
-                    Unique sources:
-                    <strong>
-                    {int(row["sources"])}
-                    </strong>
-                </div>
-
-                <div class="back-line">
-                    Avg. relevance:
-                    <strong>
-                    {row["average_relevance"]:.1f} / 10
-                    </strong>
-                </div>
-
-                <div class="back-total">
-                    Total Trend Strength:
-                    {row["trend_strength"]:.1f} / 100
-                </div>
-
+            <div class="metrics-line">
+                WoW: {wow}
+                &nbsp;&nbsp;·&nbsp;&nbsp;
+                {int(row["signals"])} signals
+                &nbsp;&nbsp;·&nbsp;&nbsp;
+                {int(row["sources"])} sources
             </div>
 
         </div>
-    </div>
-    """
+        """,
+        unsafe_allow_html=True,
+    )
 
-    return html
+    with st.expander(
+        "Show calculation"
+    ):
+
+        st.markdown(
+            f"""
+**Volume:** {row["volume_points"]:.1f} / 30  
+{int(row["signals"])} relevant signals in the latest monitored week.
+
+**Growth:** {row["growth_points"]:.1f} / 30  
+WoW change: **{wow}**
+
+**Source breadth:** {row["source_points"]:.1f} / 20  
+{int(row["sources"])} unique sources.
+
+**Relevance:** {row["relevance_points"]:.1f} / 20  
+Average relevance: **{row["average_relevance"]:.1f} / 10**
+
+---
+
+**Trend Strength: {row["trend_strength"]:.1f} / 100**
+            """
+        )
 
 
-# 2-column card layout
+# ============================================================
+# 2 x 2 / 2-COLUMN LAYOUT
+# ============================================================
+
 for i in range(
     0,
     len(card_data),
@@ -593,23 +513,15 @@ for i in range(
     )
 
     with col1:
-
-        st.markdown(
-            trend_card(
-                card_data.iloc[i]
-            ),
-            unsafe_allow_html=True,
+        render_card(
+            card_data.iloc[i]
         )
 
     if i + 1 < len(card_data):
 
         with col2:
-
-            st.markdown(
-                trend_card(
-                    card_data.iloc[i + 1]
-                ),
-                unsafe_allow_html=True,
+            render_card(
+                card_data.iloc[i + 1]
             )
 
 
@@ -625,14 +537,17 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Public sources currently represented in the analyzed dataset.
+        Public sources currently represented in the monitored dataset.
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 
-if not articles.empty and "source" in articles.columns:
+if (
+    not articles.empty
+    and "source" in articles.columns
+):
 
     source_counts = (
         articles["source"]
@@ -656,7 +571,8 @@ if not articles.empty and "source" in articles.columns:
                 </div>
 
                 <div class="source-count">
-                    {int(row["articles"])} collected articles
+                    {int(row["articles"])}
+                    collected articles
                 </div>
 
             </div>
@@ -681,27 +597,19 @@ with st.expander(
 
     st.markdown(
         """
-        The Communication Monitor collects publicly available
-        articles from selected professional and regulatory sources.
+The Communication Monitor collects publicly available articles from selected professional and regulatory sources.
 
-        The pipeline consists of three stages:
+**1. Collector**  
+Collects article titles, publication dates, URLs and sources.
 
-        **1. Collector**  
-        Collects article titles, publication dates, URLs and sources.
+**2. Analyzer**  
+Uses transparent rule-based classification to identify relevant categories, trends and an internal relevance score.
 
-        **2. Analyzer**  
-        Uses transparent rule-based classification to identify
-        relevant categories, trends and an internal relevance score.
+**3. Trend Engine**  
+Compares the latest monitored week with the previous week and calculates Trend Strength from volume, growth, source breadth and relevance.
 
-        **3. Trend Engine**  
-        Compares the latest monitored week with the previous week
-        and calculates Trend Strength from volume, growth,
-        source breadth and relevance.
+Articles classified as **Review**, **Noise**, or with an **Unclassified trend** do not contribute to Trend Strength.
 
-        Articles classified as **Review**, **Noise** or with an
-        **Unclassified trend** do not contribute to Trend Strength.
-
-        The monitor is intended as a communication and market
-        monitoring tool rather than an external statistical benchmark.
+The Communication Monitor is intended as a communication and market-monitoring tool rather than an external statistical benchmark.
         """
     )
