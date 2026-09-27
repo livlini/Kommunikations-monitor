@@ -89,7 +89,7 @@ st.markdown("""
 # ---------- Chart first ----------
 st.subheader("Trend Strength Overview")
 chart = df[["Trend","score"]].set_index("Trend")
-st.bar_chart(chart, horizontal=True, height=300)
+st.bar_chart(chart, horizontal=True, height=400)
 
 st.markdown('<div class="note"><b>Trendscore is the combined trend strength based on four different factors.</b></div>', unsafe_allow_html=True)
 
