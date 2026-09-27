@@ -88,8 +88,45 @@ st.markdown("""
 
 # ---------- Chart first ----------
 st.subheader("Trend Strength Overview")
-chart = df[["Trend","score"]].set_index("Trend")
-st.bar_chart(chart, horizontal=True, height=300)
+
+import altair as alt
+
+chart = alt.Chart(df).mark_bar(
+    size=42,
+    cornerRadiusEnd=5
+).encode(
+    x=alt.X(
+        "score:Q",
+        title="Trend Strength",
+        scale=alt.Scale(domain=[0, 100])
+    ),
+    y=alt.Y(
+        "Trend:N",
+        title=None,
+        sort="-x"
+    ),
+    tooltip=[
+        alt.Tooltip("Trend:N", title="Trend"),
+        alt.Tooltip("score:Q", title="Trend Strength")
+    ]
+)
+
+labels = alt.Chart(df).mark_text(
+    align="left",
+    baseline="middle",
+    dx=8,
+    fontSize=14,
+    fontWeight="bold"
+).encode(
+    x="score:Q",
+    y=alt.Y("Trend:N", sort="-x"),
+    text=alt.Text("score:Q")
+)
+
+st.altair_chart(
+    chart + labels,
+    use_container_width=True
+)
 
 st.markdown('<div class="note"><b>Trendscore is the combined trend strength based on four different factors.</b></div>', unsafe_allow_html=True)
 
