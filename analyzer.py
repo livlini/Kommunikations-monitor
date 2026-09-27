@@ -19,12 +19,6 @@ COLUMNS_REQUIRED = [
 
 # ============================================================
 # CATEGORY RULES
-#
-# Regex allows us to recognise Danish word families.
-#
-# Example:
-# skatt\w* matches:
-# skat, skatteudspil, skatteregler, skattelovgivning etc.
 # ============================================================
 
 CATEGORY_RULES = {
@@ -39,6 +33,7 @@ CATEGORY_RULES = {
         r"\btax\w*",
         r"\bvat\b",
         r"\bcustoms?\b",
+        r"\bimport\w*",
         r"\btransfer pricing\b",
         r"\bcbam\b",
         r"\bvida\b",
@@ -59,7 +54,7 @@ CATEGORY_RULES = {
         r"\bassurance\b",
         r"\bkontrolstandard\w*",
         r"\brevisionsstandard\w*",
-        r"\bISA\b",
+        r"\bisa\b",
     ],
 
     "Finance & CFO": [
@@ -75,12 +70,24 @@ CATEGORY_RULES = {
         r"\bøkonomisk\w*",
         r"\brapportering\w*",
         r"\breporting\b",
+
+        # Accounting / reporting standards
         r"\bifrs\b",
+        r"\bias\b",
+        r"\biasb\b",
+        r"\baccounting\b",
+        r"\baccounting standard\w*",
+        r"\bfinancial statement\w*",
+        r"\bfinancial reporting standard\w*",
+
+        # ESG / sustainability reporting
         r"\besrs\b",
         r"\bcsrd\b",
         r"\besg\b",
         r"\bbæredygtighed\w*",
         r"\bsustainability\w*",
+
+        # Finance transformation
         r"\berp\b",
         r"\bcontrolling\b",
         r"\bcontroller\w*",
@@ -162,6 +169,7 @@ TREND_RULES = {
         r"\btold\w*",
         r"\bcustoms?\b",
         r"\bcbam\b",
+        r"\bimport\w*",
     ],
 
     "Audit & assurance": [
@@ -182,7 +190,13 @@ TREND_RULES = {
 
     "Financial reporting": [
         r"\bfinancial reporting\b",
+        r"\bfinancial statement\w*",
+        r"\bfinancial reporting standard\w*",
+        r"\baccounting\b",
+        r"\baccounting standard\w*",
         r"\bifrs\b",
+        r"\bias\b",
+        r"\biasb\b",
         r"\bregnskab\w*",
         r"\bårsrapport\w*",
         r"\brapportering\w*",
@@ -206,10 +220,7 @@ TREND_RULES = {
 
 
 # ============================================================
-# NOISE
-#
-# Only obvious technical/navigation content is removed.
-# We deliberately keep uncertain articles for Review.
+# OBVIOUS NOISE
 # ============================================================
 
 NOISE_PATTERNS = [
@@ -234,10 +245,6 @@ NOISE_PATTERNS = [
 # ============================================================
 
 def fix_encoding(text):
-    """
-    Repair common encoding problems such as:
-    bÃ¦redygtighed -> bæredygtighed
-    """
 
     if pd.isna(text):
         return ""
@@ -251,13 +258,18 @@ def fix_encoding(text):
         "ðŸ",
     ]
 
-    if any(marker in text for marker in suspicious):
+    if any(
+        marker in text
+        for marker in suspicious
+    ):
+
         try:
             text = (
                 text
                 .encode("latin1")
                 .decode("utf-8")
             )
+
         except (
             UnicodeEncodeError,
             UnicodeDecodeError,
@@ -272,13 +284,10 @@ def fix_encoding(text):
 
 
 def normalize_text(text):
-    """
-    Lowercase text while preserving Danish letters.
-    """
 
-    text = fix_encoding(text)
-
-    return text.lower().strip()
+    return fix_encoding(
+        text
+    ).lower().strip()
 
 
 # ============================================================
@@ -305,10 +314,13 @@ def is_noise(title):
 
 
 # ============================================================
-# PATTERN MATCHING
+# MATCHING
 # ============================================================
 
-def find_matches(text, patterns):
+def find_matches(
+    text,
+    patterns,
+):
 
     matches = []
 
@@ -319,7 +331,10 @@ def find_matches(text, patterns):
             text,
             flags=re.IGNORECASE,
         ):
-            matches.append(pattern)
+
+            matches.append(
+                pattern
+            )
 
     return matches
 
@@ -334,7 +349,10 @@ def classify_categories(title):
 
     results = {}
 
-    for category, patterns in CATEGORY_RULES.items():
+    for (
+        category,
+        patterns,
+    ) in CATEGORY_RULES.items():
 
         matches = find_matches(
             text,
@@ -342,9 +360,13 @@ def classify_categories(title):
         )
 
         if matches:
-            results[category] = matches
+
+            results[
+                category
+            ] = matches
 
     if not results:
+
         return (
             "Unclassified",
             "",
@@ -353,20 +375,26 @@ def classify_categories(title):
 
     sorted_categories = sorted(
         results.items(),
-        key=lambda item: len(item[1]),
+        key=lambda item: len(
+            item[1]
+        ),
         reverse=True,
     )
 
-    primary_category = sorted_categories[0][0]
+    primary_category = (
+        sorted_categories[0][0]
+    )
 
     all_categories = " | ".join(
         category
-        for category, _ in sorted_categories
+        for category, _
+        in sorted_categories
     )
 
     total_matches = sum(
         len(matches)
-        for matches in results.values()
+        for matches
+        in results.values()
     )
 
     return (
@@ -386,7 +414,10 @@ def classify_trend(title):
 
     results = {}
 
-    for trend, patterns in TREND_RULES.items():
+    for (
+        trend,
+        patterns,
+    ) in TREND_RULES.items():
 
         matches = find_matches(
             text,
@@ -394,9 +425,13 @@ def classify_trend(title):
         )
 
         if matches:
-            results[trend] = len(matches)
+
+            results[trend] = len(
+                matches
+            )
 
     if not results:
+
         return "Unclassified"
 
     return max(
@@ -406,11 +441,10 @@ def classify_trend(title):
 
 
 # ============================================================
-# RELEVANCE
+# RELEVANCE SCORE
 #
-# IMPORTANT:
-# This is an internal transparent score.
-# It is NOT an external industry benchmark.
+# Internal Communication Monitor score.
+# Not an external benchmark.
 # ============================================================
 
 def calculate_relevance(
@@ -421,22 +455,21 @@ def calculate_relevance(
     if match_count == 0:
         return 0.0
 
-    # One genuine domain match already indicates
-    # possible communication relevance.
     score = 4.0
 
-    # Additional independent signals strengthen it.
     score += min(
         match_count,
         4,
     ) * 1.0
 
-    # Recognisable trend gives additional confidence.
     if trend != "Unclassified":
         score += 1.0
 
     return min(
-        round(score, 1),
+        round(
+            score,
+            1,
+        ),
         10.0,
     )
 
@@ -444,15 +477,9 @@ def calculate_relevance(
 # ============================================================
 # STATUS
 #
-# Relevant:
-# We have enough evidence to classify it.
-#
-# Review:
-# It may still be useful, but rules could not
-# confidently classify it.
-#
-# Noise:
-# Obvious navigation / technical content.
+# Relevant = classified with sufficient evidence
+# Review   = uncertain, but retained
+# Noise    = navigation / technical content
 # ============================================================
 
 def determine_status(
@@ -479,14 +506,18 @@ def determine_status(
 
 def analyze_articles():
 
-    if not os.path.exists(INPUT_FILE):
+    if not os.path.exists(
+        INPUT_FILE
+    ):
 
         raise FileNotFoundError(
             f"{INPUT_FILE} does not exist. "
             "Run collector.py first."
         )
 
-    df = pd.read_csv(INPUT_FILE)
+    df = pd.read_csv(
+        INPUT_FILE
+    )
 
     for column in COLUMNS_REQUIRED:
 
@@ -497,10 +528,7 @@ def analyze_articles():
                 f"{column}"
             )
 
-    # --------------------------------------------------------
-    # CLEAN TEXT
-    # --------------------------------------------------------
-
+    # Clean encoding
     df["title"] = (
         df["title"]
         .apply(fix_encoding)
@@ -511,17 +539,15 @@ def analyze_articles():
         .apply(fix_encoding)
     )
 
-    # --------------------------------------------------------
-    # ANALYSE EVERY ARTICLE
-    # --------------------------------------------------------
-
     rows = []
 
     for _, row in df.iterrows():
 
         title = row["title"]
 
-        noise = is_noise(title)
+        noise = is_noise(
+            title
+        )
 
         if noise:
 
@@ -538,41 +564,63 @@ def analyze_articles():
                 primary_category,
                 categories,
                 match_count,
-            ) = classify_categories(title)
-
-            trend = classify_trend(title)
-
-            relevance = calculate_relevance(
-                match_count,
-                trend,
+            ) = classify_categories(
+                title
             )
 
-            status = determine_status(
-                noise,
-                primary_category,
-                relevance,
+            trend = classify_trend(
+                title
+            )
+
+            relevance = (
+                calculate_relevance(
+                    match_count,
+                    trend,
+                )
+            )
+
+            status = (
+                determine_status(
+                    noise,
+                    primary_category,
+                    relevance,
+                )
             )
 
         result = row.to_dict()
 
         result.update({
-            "status": status,
-            "primary_category": primary_category,
-            "categories": categories,
-            "keyword_matches": match_count,
-            "trend": trend,
-            "relevance": relevance,
+            "status":
+                status,
+
+            "primary_category":
+                primary_category,
+
+            "categories":
+                categories,
+
+            "keyword_matches":
+                match_count,
+
+            "trend":
+                trend,
+
+            "relevance":
+                relevance,
         })
 
-        rows.append(result)
+        rows.append(
+            result
+        )
 
-    analyzed_df = pd.DataFrame(rows)
+    analyzed_df = pd.DataFrame(
+        rows
+    )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SORT
-    #
-    # Relevant first, then Review, then Noise.
-    # --------------------------------------------------------
+    # Relevant first → Review → Noise
+    # ========================================================
 
     status_order = {
         "Relevant": 0,
@@ -580,29 +628,39 @@ def analyze_articles():
         "Noise": 2,
     }
 
-    analyzed_df["_status_order"] = (
+    analyzed_df[
+        "_status_order"
+    ] = (
         analyzed_df["status"]
         .map(status_order)
     )
 
-    analyzed_df = analyzed_df.sort_values(
-        by=[
-            "_status_order",
-            "relevance",
-        ],
-        ascending=[
-            True,
-            False,
-        ],
+    analyzed_df = (
+        analyzed_df
+        .sort_values(
+            by=[
+                "_status_order",
+                "relevance",
+            ],
+            ascending=[
+                True,
+                False,
+            ],
+        )
     )
 
-    analyzed_df = analyzed_df.drop(
-        columns=["_status_order"]
+    analyzed_df = (
+        analyzed_df
+        .drop(
+            columns=[
+                "_status_order"
+            ]
+        )
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAVE
-    # --------------------------------------------------------
+    # ========================================================
 
     os.makedirs(
         "data",
@@ -614,31 +672,40 @@ def analyze_articles():
         index=False,
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # REPORT
-    # --------------------------------------------------------
+    # ========================================================
 
     print(
         f"\nAnalyzed "
-        f"{len(analyzed_df)} articles."
+        f"{len(analyzed_df)} "
+        f"articles."
     )
 
-    print("\nStatus:")
+    print(
+        "\nStatus:"
+    )
 
-    for status, count in (
+    for (
+        status,
+        count,
+    ) in (
         analyzed_df["status"]
         .value_counts()
         .items()
     ):
 
         print(
-            f"  {status}: {count}"
+            f"  {status}: "
+            f"{count}"
         )
 
-    relevant_df = analyzed_df[
-        analyzed_df["status"]
-        == "Relevant"
-    ]
+    relevant_df = (
+        analyzed_df[
+            analyzed_df["status"]
+            == "Relevant"
+        ]
+    )
 
     print(
         "\nRelevant articles "
@@ -648,12 +715,16 @@ def analyze_articles():
     if relevant_df.empty:
 
         print(
-            "  No relevant articles detected."
+            "  No relevant "
+            "articles detected."
         )
 
     else:
 
-        for category, count in (
+        for (
+            category,
+            count,
+        ) in (
             relevant_df[
                 "primary_category"
             ]
@@ -662,7 +733,8 @@ def analyze_articles():
         ):
 
             print(
-                f"  {category}: {count}"
+                f"  {category}: "
+                f"{count}"
             )
 
     review_count = (
@@ -671,7 +743,8 @@ def analyze_articles():
     ).sum()
 
     print(
-        f"\nArticles kept for review: "
+        f"\nArticles kept "
+        f"for review: "
         f"{review_count}"
     )
 
