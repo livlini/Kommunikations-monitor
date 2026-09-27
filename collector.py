@@ -301,19 +301,17 @@ def collect_digst():
 def collect_erhvervsstyrelsen():
 
     source = "Erhvervsstyrelsen"
-
     base_url = "https://erhvervsstyrelsen.dk"
-
-    news_url = (
-        "https://erhvervsstyrelsen.dk/nyheder"
-    )
+    news_url = "https://erhvervsstyrelsen.dk/nyheder"
 
     print(f"\nCollecting: {source}")
 
     soup = fetch_page(news_url)
 
     articles = []
+    seen_urls = set()
 
+    # Find all links on the official news page
     for link in soup.find_all("a", href=True):
 
         href = link.get("href", "")
@@ -324,35 +322,69 @@ def collect_erhvervsstyrelsen():
         if not title:
             continue
 
-        url = normalize_url(
-            base_url,
-            href,
-        )
-
+        url = normalize_url(base_url, href)
         parsed = urlparse(url)
 
+        # Only keep Erhvervsstyrelsen links
         if parsed.netloc not in [
             "erhvervsstyrelsen.dk",
             "www.erhvervsstyrelsen.dk",
         ]:
             continue
 
-        # Avoid obvious navigation links
-        ignored = [
+        # Skip obvious navigation/system pages
+        ignored_paths = {
+            "",
+            "/",
             "/nyheder",
-            "/om-os",
             "/kontakt",
+            "/om-os",
             "/soeg",
-        ]
+            "/publikationer",
+        }
 
-        if parsed.path.rstrip("/") in ignored:
+        if parsed.path.rstrip("/") in ignored_paths:
             continue
 
-        published_date = find_date_near_element(
-            link
-        )
+        # Skip duplicate URLs
+        if url in seen_urls:
+            continue
 
-        # Require a date. This removes most menu links.
+        # News cards contain a date in their surrounding content.
+        published_date = find_date_near_element(link)
+
+        # Additional search higher up in the card structure
+        if not published_date:
+            parent = link
+
+            for _ in range(5):
+                parent = getattr(parent, "parent", None)
+
+                if parent is None:
+                    break
+
+                text = clean_text(
+                    parent.get_text(" ", strip=True)
+                )
+
+                date_match = re.search(
+                    r"\b\d{1,2}\.\s*"
+                    r"(?:januar|februar|marts|april|maj|juni|"
+                    r"juli|august|september|oktober|november|december)"
+                    r"\s+\d{4}\b",
+                    text,
+                    re.IGNORECASE,
+                )
+
+                if date_match:
+                    published_date = parse_date(
+                        date_match.group()
+                        .replace(". ", " ")
+                    )
+                    break
+
+        # Only save dated items from the news listing.
+        # This removes menus and ordinary site links.
         if not published_date:
             continue
 
@@ -365,6 +397,7 @@ def collect_erhvervsstyrelsen():
 
         if valid_article(article):
             articles.append(article)
+            seen_urls.add(url)
 
     print(
         f"{source}: {len(articles)} articles found"
