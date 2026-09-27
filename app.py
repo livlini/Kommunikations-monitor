@@ -1,194 +1,707 @@
-import streamlit as st
+import os
 import pandas as pd
+import streamlit as st
 import altair as alt
-import html
 
-st.set_page_config(page_title="Communication Monitor", page_icon="◫", layout="wide")
 
-# ---------- Scoring ----------
-def calculate_trend_score(signals, previous_signals, sources, relevance):
-    volume = min(signals, 30)
-    growth_pct = ((signals - previous_signals) / previous_signals * 100) if previous_signals > 0 else (100 if signals > 0 else 0)
-    growth = min(max(growth_pct, 0) / 100 * 30, 30)
-    breadth = min(sources * 2, 20)
-    relevance_pts = min(max(relevance, 0), 10) * 2
-    return {
-        "score": round(volume + growth + breadth + relevance_pts),
-        "growth_pct": growth_pct,
-        "volume_points": volume,
-        "growth_points": growth,
-        "source_points": breadth,
-        "relevance_points": relevance_pts,
-    }
+# ============================================================
+# PAGE CONFIG
+# ============================================================
 
-DATA = [
-    {"Trend":"AI governance & AI Act","Category":"AI & Technology","Signals":18,"PreviousSignals":13,"Sources":5,"Relevance":9.0,
-     "Why":"Regulation and governance are moving from principles into operational compliance and supervision."},
-    {"Trend":"AI in the finance function","Category":"Finance & CFO","Signals":16,"PreviousSignals":12,"Sources":4,"Relevance":8.8,
-     "Why":"AI is increasingly discussed as a finance transformation tool rather than a standalone technology experiment."},
-    {"Trend":"Audit standards & assurance","Category":"Audit","Signals":12,"PreviousSignals":11,"Sources":3,"Relevance":7.8,
-     "Why":"Professional guidance and standards continue to change, creating a need for concise client communication."},
-    {"Trend":"Digital tax & e-invoicing","Category":"Tax","Signals":10,"PreviousSignals":9,"Sources":4,"Relevance":8.2,
-     "Why":"Tax reporting is becoming increasingly digital and data-driven, affecting processes and controls."},
-]
-
-for d in DATA:
-    d.update(calculate_trend_score(d["Signals"], d["PreviousSignals"], d["Sources"], d["Relevance"]))
-
-df = pd.DataFrame(DATA)
-
-# ---------- Styling ----------
-st.markdown("""
-<style>
-:root { --blue:#164a7b; --blue2:#2d6ea3; --pale:#eef4f8; --line:#d8e2ea; --ink:#17324a; }
-.stApp { background:#f6f8fa; color:var(--ink); }
-.block-container { max-width:1180px; padding-top:2.1rem; padding-bottom:3rem; }
-h1,h2,h3 { color:#123d63 !important; }
-[data-testid="stHeader"] { background:rgba(246,248,250,.94); }
-[data-testid="stSidebar"] { display:none; }
-
-.hero {background:white;border:1px solid var(--line);border-radius:18px;padding:28px 32px;margin-bottom:24px;}
-.eyebrow {font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:#5f7890;font-weight:700;}
-.hero h1 {margin:.2rem 0 .25rem 0;font-size:2.25rem;}
-.hero p {margin:0;color:#6a7e90;}
-
-.flip-grid {display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:18px 0 34px;}
-.flip-card {height:270px;perspective:1200px;}
-.flip-inner {position:relative;width:100%;height:100%;transition:transform .65s;transform-style:preserve-3d;}
-.flip-card:hover .flip-inner {transform:rotateY(180deg);}
-.flip-front,.flip-back {
- position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
- border-radius:18px;border:1px solid #d5e0e8;background:white;box-shadow:0 5px 18px rgba(28,65,96,.06);
- padding:26px;box-sizing:border-box;
-}
-.flip-front {display:flex;flex-direction:column;justify-content:space-between;}
-.flip-back {transform:rotateY(180deg);background:#eef4f8;overflow:auto;}
-.category {font-size:.78rem;text-transform:uppercase;letter-spacing:.11em;color:#668198;font-weight:700;}
-.trend-name {font-size:1.45rem;font-weight:750;color:#173f62;line-height:1.2;margin-top:8px;}
-.metrics {display:flex;gap:38px;}
-.metric-label {font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#7890a3;}
-.metric-value {font-size:2rem;font-weight:750;color:#164a7b;}
-.back-title {font-size:1.05rem;font-weight:750;color:#164a7b;margin-bottom:10px;}
-.desc {font-size:.91rem;line-height:1.45;color:#425d73;margin-bottom:13px;}
-.calc {font-size:.82rem;line-height:1.6;color:#536c80;}
-.calc strong {color:#173f62;}
-.source-box {background:white;border:1px solid var(--line);border-radius:18px;padding:24px 28px;margin-top:10px;}
-.source-box p {color:#5f7486;margin-bottom:0;}
-.note {font-size:.86rem;color:#647d91;margin:.4rem 0 1rem;}
-@media(max-width:800px){.flip-grid{grid-template-columns:1fr}.flip-card{height:290px}}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<div class="hero">
-  <div class="eyebrow">Weekly communication intelligence</div>
-  <h1>Communication Monitor</h1>
-  <p>Emerging signals across Finance & CFO, Audit, Tax and AI & Technology.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ---------- Chart first ----------
-st.subheader("Trend Strength Overview")
-
-# Altair is used here instead of Streamlit's standard bar chart so the
-# full trend titles remain visible and the tooltip can show the score.
-trend_chart = (
-    alt.Chart(df)
-    .mark_bar(
-        size=44,
-        cornerRadiusEnd=6,
-        color="#8EC5E8"
-    )
-    .encode(
-        x=alt.X(
-            "score:Q",
-            title="Trend Strength",
-            scale=alt.Scale(domain=[0, 100]),
-            axis=alt.Axis(grid=True, tickCount=6)
-        ),
-        y=alt.Y(
-            "Trend:N",
-            title=None,
-            sort=alt.EncodingSortField(field="score", order="descending"),
-            axis=alt.Axis(
-                labelLimit=320,
-                labelFontSize=13,
-                labelPadding=12
-            )
-        ),
-        tooltip=[
-            alt.Tooltip("Trend:N", title="Trend"),
-            alt.Tooltip("score:Q", title="Trend Strength", format=".0f")
-        ]
-    )
-    .properties(height=360)
+st.set_page_config(
+    page_title="Communication Monitor",
+    page_icon="📊",
+    layout="wide",
 )
 
-st.altair_chart(trend_chart, use_container_width=True)
 
-st.markdown('<div class="note"><b>Trendscore is the combined trend strength based on four different factors.</b></div>', unsafe_allow_html=True)
+# ============================================================
+# FILES
+# ============================================================
 
-with st.expander("How is the Trend Strength calculated?"):
-    st.markdown("""
-The score ranges from **0 to 100** and is calculated using four transparent factors:
+TREND_FILE = "data/trends.csv"
+ARTICLE_FILE = "data/analyzed_articles.csv"
 
-| Factor | Calculation | Maximum |
-|---|---|---:|
-| **Volume** | 1 point per relevant signal/article | 30 points |
-| **Growth** | 100% growth or more = 30 points; 50% growth = 15 points | 30 points |
-| **Source breadth** | 2 points per unique source | 20 points |
-| **Relevance** | Average relevance score (0–10) × 2 | 20 points |
-| **Total** | Sum of the four factors | **100 points** |
 
-The Trend Strength is an internal indicator designed for this monitor. It is not an external industry benchmark.
-""")
+# ============================================================
+# DESIGN
+# ============================================================
 
-# ---------- 2x2 flip cards ----------
-st.subheader("Areas")
-cards = []
-for d in sorted(DATA, key=lambda x: x["score"], reverse=True):
-    name = html.escape(d["Trend"])
-    category = html.escape(d["Category"])
-    why = html.escape(d["Why"])
-    cards.append(f"""
+st.markdown(
+    """
+    <style>
+
+    .stApp {
+        background-color: #f5f7fa;
+    }
+
+    .block-container {
+        max-width: 1250px;
+        padding-top: 2.5rem;
+        padding-bottom: 4rem;
+    }
+
+    h1, h2, h3 {
+        color: #163d73;
+    }
+
+    .main-title {
+        font-size: 42px;
+        font-weight: 750;
+        color: #163d73;
+        margin-bottom: 0px;
+    }
+
+    .subtitle {
+        color: #667085;
+        font-size: 17px;
+        margin-top: 4px;
+        margin-bottom: 32px;
+    }
+
+    .section-title {
+        color: #163d73;
+        font-size: 25px;
+        font-weight: 700;
+        margin-top: 30px;
+        margin-bottom: 5px;
+    }
+
+    .section-description {
+        color: #667085;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* FLIP CARD */
+
+    .flip-card {
+        background-color: transparent;
+        width: 100%;
+        height: 290px;
+        perspective: 1000px;
+        margin-bottom: 22px;
+    }
+
+    .flip-card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.65s;
+        transform-style: preserve-3d;
+    }
+
+    .flip-card:hover .flip-card-inner {
+        transform: rotateY(180deg);
+    }
+
+    .flip-card-front,
+    .flip-card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+
+        border-radius: 18px;
+        padding: 27px;
+
+        box-sizing: border-box;
+
+        box-shadow:
+            0 6px 18px
+            rgba(22, 61, 115, 0.08);
+    }
+
+    .flip-card-front {
+        background: white;
+        border: 1px solid #e3eaf3;
+    }
+
+    .flip-card-back {
+        background: #163d73;
+        color: white;
+        transform: rotateY(180deg);
+    }
+
+    .category-label {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #6282ad;
+        margin-bottom: 10px;
+    }
+
+    .trend-name {
+        color: #163d73;
+        font-size: 22px;
+        line-height: 1.25;
+        font-weight: 700;
+        min-height: 58px;
+    }
+
+    .strength-label {
+        color: #7a8797;
+        font-size: 13px;
+        margin-top: 25px;
+    }
+
+    .strength-number {
+        color: #163d73;
+        font-size: 52px;
+        font-weight: 750;
+        line-height: 1;
+        margin-top: 4px;
+    }
+
+    .wow {
+        margin-top: 16px;
+        font-size: 14px;
+        color: #667085;
+    }
+
+    .back-title {
+        font-size: 19px;
+        font-weight: 700;
+        margin-bottom: 18px;
+    }
+
+    .back-line {
+        font-size: 14px;
+        margin-bottom: 9px;
+        opacity: 0.95;
+    }
+
+    .back-total {
+        margin-top: 15px;
+        padding-top: 13px;
+        border-top: 1px solid rgba(255,255,255,0.3);
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .source-box {
+        background: white;
+        border: 1px solid #e3eaf3;
+        border-radius: 14px;
+        padding: 20px 24px;
+        margin-bottom: 10px;
+    }
+
+    .source-name {
+        color: #163d73;
+        font-weight: 650;
+        font-size: 15px;
+    }
+
+    .source-count {
+        color: #667085;
+        font-size: 13px;
+        margin-top: 3px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# LOAD DATA
+# ============================================================
+
+@st.cache_data
+def load_trends():
+
+    if not os.path.exists(TREND_FILE):
+        return pd.DataFrame()
+
+    df = pd.read_csv(TREND_FILE)
+
+    numeric_columns = [
+        "signals",
+        "previous_signals",
+        "wow_growth_pct",
+        "sources",
+        "average_relevance",
+        "volume_points",
+        "growth_points",
+        "source_points",
+        "relevance_points",
+        "trend_strength",
+    ]
+
+    for column in numeric_columns:
+
+        if column in df.columns:
+
+            df[column] = pd.to_numeric(
+                df[column],
+                errors="coerce",
+            ).fillna(0)
+
+    return df
+
+
+@st.cache_data
+def load_articles():
+
+    if not os.path.exists(ARTICLE_FILE):
+        return pd.DataFrame()
+
+    return pd.read_csv(ARTICLE_FILE)
+
+
+trends = load_trends()
+articles = load_articles()
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.markdown(
+    '<div class="main-title">Communication Monitor</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="subtitle">
+        A weekly signal monitor tracking communication-relevant
+        developments across Finance & CFO, Audit, Tax and AI & Technology.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# NO DATA
+# ============================================================
+
+if trends.empty:
+
+    st.warning(
+        "No trend data is available yet. "
+        "Run the Weekly Data Collection workflow to generate data/trends.csv."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# REMOVE TRENDS WITH NO CURRENT SIGNALS
+#
+# Previous-week trends remain in trends.csv for calculation
+# purposes, but the dashboard focuses on active current trends.
+# ============================================================
+
+active_trends = trends[
+    trends["signals"] > 0
+].copy()
+
+active_trends = active_trends.sort_values(
+    "trend_strength",
+    ascending=False,
+)
+
+
+if active_trends.empty:
+
+    st.info(
+        "No active trends were detected in the latest monitored week."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# TREND STRENGTH OVERVIEW
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">Trend Strength Overview</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="section-description">
+        Trendscore is the combined trend strength based on four different factors.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+chart_data = active_trends[
+    [
+        "trend",
+        "trend_strength",
+        "signals",
+        "wow_growth_pct",
+        "sources",
+        "average_relevance",
+    ]
+].copy()
+
+
+chart = (
+    alt.Chart(chart_data)
+    .mark_bar(
+        cornerRadiusTopRight=6,
+        cornerRadiusBottomRight=6,
+        color="#7ea6d8",
+    )
+    .encode(
+
+        y=alt.Y(
+            "trend:N",
+            sort="-x",
+            title=None,
+            axis=alt.Axis(
+                labelLimit=350,
+                labelFontSize=13,
+            ),
+        ),
+
+        x=alt.X(
+            "trend_strength:Q",
+            title="Trend Strength",
+            scale=alt.Scale(
+                domain=[0, 100]
+            ),
+        ),
+
+        tooltip=[
+            alt.Tooltip(
+                "trend:N",
+                title="Trend",
+            ),
+            alt.Tooltip(
+                "trend_strength:Q",
+                title="Trend Strength",
+                format=".1f",
+            ),
+            alt.Tooltip(
+                "signals:Q",
+                title="Signals",
+            ),
+            alt.Tooltip(
+                "wow_growth_pct:Q",
+                title="WoW",
+                format=".1f",
+            ),
+            alt.Tooltip(
+                "sources:Q",
+                title="Sources",
+            ),
+            alt.Tooltip(
+                "average_relevance:Q",
+                title="Avg. relevance",
+                format=".1f",
+            ),
+        ],
+    )
+    .properties(
+        height=max(
+            280,
+            len(chart_data) * 48,
+        )
+    )
+)
+
+
+st.altair_chart(
+    chart,
+    use_container_width=True,
+)
+
+
+# ============================================================
+# SCORE EXPLANATION
+# ============================================================
+
+with st.expander(
+    "How is Trend Strength calculated?"
+):
+
+    st.markdown(
+        """
+        **Trend Strength is an internal indicator from 0–100.**
+
+        It combines four factors:
+
+        - **Volume — max 30 points:** 1 point per relevant signal/article.
+        - **Week-over-week growth — max 30 points:** measures growth compared with the previous week. +100% or more gives 30 points.
+        - **Source breadth — max 20 points:** 2 points per unique source.
+        - **Relevance — max 20 points:** average relevance score from 0–10, multiplied by 2.
+
+        The score is designed for this Communication Monitor and is
+        **not an external industry benchmark**.
+        """
+    )
+
+
+# ============================================================
+# TREND CARDS
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">Current Trends</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="section-description">
+        Hover over a trend to see the calculation behind its Trend Strength.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# Show maximum 6 strongest current trends
+card_data = active_trends.head(6).reset_index(
+    drop=True
+)
+
+
+def format_wow(value):
+
+    if value > 0:
+        return f"+{value:.1f}%"
+
+    if value < 0:
+        return f"{value:.1f}%"
+
+    return "0.0%"
+
+
+def trend_card(row):
+
+    wow = format_wow(
+        row["wow_growth_pct"]
+    )
+
+    html = f"""
     <div class="flip-card">
-      <div class="flip-inner">
-        <div class="flip-front">
-          <div>
-            <div class="category">{category}</div>
-            <div class="trend-name">{name}</div>
-          </div>
-          <div class="metrics">
-            <div><div class="metric-label">Trend Strength</div><div class="metric-value">{d["score"]}/100</div></div>
-            <div><div class="metric-label">WoW</div><div class="metric-value">{d["growth_pct"]:+.0f}%</div></div>
-          </div>
-        </div>
-        <div class="flip-back">
-          <div class="back-title">{name}</div>
-          <div class="desc">{why}</div>
-          <div class="calc">
-            <strong>Calculation</strong><br>
-            Volume: {d["Signals"]} signals → {d["volume_points"]:.1f}/30<br>
-            Growth: {d["PreviousSignals"]} → {d["Signals"]} ({d["growth_pct"]:+.1f}%) → {d["growth_points"]:.1f}/30<br>
-            Source breadth: {d["Sources"]} sources × 2 → {d["source_points"]:.1f}/20<br>
-            Relevance: {d["Relevance"]:.1f}/10 × 2 → {d["relevance_points"]:.1f}/20<br>
-            <strong>Total: {d["score"]}/100</strong>
-          </div>
-        </div>
-      </div>
-    </div>""")
+        <div class="flip-card-inner">
 
-st.markdown('<div class="flip-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+            <div class="flip-card-front">
 
-# ---------- Sources retained ----------
-st.subheader("Sources")
-st.markdown("""
-<div class="source-box">
-<b>KPMG Denmark Insights</b> — AI & Data, Audit & Assurance, Corporate Tax and Market Trends.<br><br>
-<b>FSR – danske revisorer</b> — audit, accounting, tax and industry updates.<br><br>
-<b>Skattestyrelsen</b> — tax news and official updates.<br><br>
-<b>Digitaliseringsstyrelsen</b> — AI regulation, supervision and digitalisation.<br><br>
-<b>Additional public sources</b> — the source universe can be extended with relevant public RSS/API sources.
-<p>Prototype data is still used in this version. Live weekly collection can be connected as the next step.</p>
-</div>
-""", unsafe_allow_html=True)
+                <div class="category-label">
+                    {row["category"]}
+                </div>
+
+                <div class="trend-name">
+                    {row["trend"]}
+                </div>
+
+                <div class="strength-label">
+                    TREND STRENGTH
+                </div>
+
+                <div class="strength-number">
+                    {row["trend_strength"]:.1f}
+                </div>
+
+                <div class="wow">
+                    WoW: {wow}
+                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                    {int(row["signals"])} signals
+                </div>
+
+            </div>
+
+
+            <div class="flip-card-back">
+
+                <div class="back-title">
+                    Score calculation
+                </div>
+
+                <div class="back-line">
+                    Volume:
+                    <strong>
+                    {row["volume_points"]:.1f} / 30
+                    </strong>
+                </div>
+
+                <div class="back-line">
+                    Growth:
+                    <strong>
+                    {row["growth_points"]:.1f} / 30
+                    </strong>
+                </div>
+
+                <div class="back-line">
+                    Source breadth:
+                    <strong>
+                    {row["source_points"]:.1f} / 20
+                    </strong>
+                </div>
+
+                <div class="back-line">
+                    Relevance:
+                    <strong>
+                    {row["relevance_points"]:.1f} / 20
+                    </strong>
+                </div>
+
+                <div class="back-line">
+                    Unique sources:
+                    <strong>
+                    {int(row["sources"])}
+                    </strong>
+                </div>
+
+                <div class="back-line">
+                    Avg. relevance:
+                    <strong>
+                    {row["average_relevance"]:.1f} / 10
+                    </strong>
+                </div>
+
+                <div class="back-total">
+                    Total Trend Strength:
+                    {row["trend_strength"]:.1f} / 100
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+    """
+
+    return html
+
+
+# 2-column card layout
+for i in range(
+    0,
+    len(card_data),
+    2,
+):
+
+    col1, col2 = st.columns(
+        2,
+        gap="large",
+    )
+
+    with col1:
+
+        st.markdown(
+            trend_card(
+                card_data.iloc[i]
+            ),
+            unsafe_allow_html=True,
+        )
+
+    if i + 1 < len(card_data):
+
+        with col2:
+
+            st.markdown(
+                trend_card(
+                    card_data.iloc[i + 1]
+                ),
+                unsafe_allow_html=True,
+            )
+
+
+# ============================================================
+# SOURCES
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">Sources</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="section-description">
+        Public sources currently represented in the analyzed dataset.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+if not articles.empty and "source" in articles.columns:
+
+    source_counts = (
+        articles["source"]
+        .value_counts()
+        .reset_index()
+    )
+
+    source_counts.columns = [
+        "source",
+        "articles",
+    ]
+
+    for _, row in source_counts.iterrows():
+
+        st.markdown(
+            f"""
+            <div class="source-box">
+
+                <div class="source-name">
+                    {row["source"]}
+                </div>
+
+                <div class="source-count">
+                    {int(row["articles"])} collected articles
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+else:
+
+    st.write(
+        "Source information is not available."
+    )
+
+
+# ============================================================
+# METHODOLOGY
+# ============================================================
+
+with st.expander(
+    "About the monitor"
+):
+
+    st.markdown(
+        """
+        The Communication Monitor collects publicly available
+        articles from selected professional and regulatory sources.
+
+        The pipeline consists of three stages:
+
+        **1. Collector**  
+        Collects article titles, publication dates, URLs and sources.
+
+        **2. Analyzer**  
+        Uses transparent rule-based classification to identify
+        relevant categories, trends and an internal relevance score.
+
+        **3. Trend Engine**  
+        Compares the latest monitored week with the previous week
+        and calculates Trend Strength from volume, growth,
+        source breadth and relevance.
+
+        Articles classified as **Review**, **Noise** or with an
+        **Unclassified trend** do not contribute to Trend Strength.
+
+        The monitor is intended as a communication and market
+        monitoring tool rather than an external statistical benchmark.
+        """
+    )
