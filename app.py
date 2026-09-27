@@ -1,9 +1,10 @@
 import os
 import html
+
+import altair as alt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-import altair as alt
 
 
 # ============================================================
@@ -26,7 +27,7 @@ ARTICLE_FILE = "data/analyzed_articles.csv"
 
 
 # ============================================================
-# GENERAL DESIGN
+# GLOBAL DESIGN
 # ============================================================
 
 st.markdown(
@@ -51,7 +52,7 @@ st.markdown(
         font-size: 42px;
         font-weight: 750;
         color: #163d73;
-        margin-bottom: 0px;
+        margin-bottom: 0;
     }
 
     .subtitle {
@@ -75,28 +76,14 @@ st.markdown(
         margin-bottom: 20px;
     }
 
-    .source-box {
-        background: white;
-        border: 1px solid #e3eaf3;
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #ffffff;
+        border-color: #e3eaf3;
         border-radius: 14px;
-        padding: 18px 22px;
-        margin-bottom: 10px;
-    }
-
-    .source-name {
-        color: #163d73;
-        font-weight: 650;
-        font-size: 15px;
-    }
-
-    .source-count {
-        color: #667085;
-        font-size: 13px;
-        margin-top: 3px;
     }
 
     div[data-testid="stExpander"] {
-        background: white;
+        background: #ffffff;
         border: 1px solid #e3eaf3;
         border-radius: 12px;
     }
@@ -192,8 +179,6 @@ if trends.empty:
     st.stop()
 
 
-# Only trends active in the latest monitored week
-
 active_trends = trends[
     trends["signals"] > 0
 ].copy()
@@ -278,24 +263,29 @@ chart = (
                 "trend:N",
                 title="Trend",
             ),
+
             alt.Tooltip(
                 "trend_strength:Q",
                 title="Trend Strength",
                 format=".1f",
             ),
+
             alt.Tooltip(
                 "signals:Q",
                 title="Signals",
             ),
+
             alt.Tooltip(
                 "wow_growth_pct:Q",
                 title="WoW",
                 format=".1f",
             ),
+
             alt.Tooltip(
                 "sources:Q",
                 title="Sources",
             ),
+
             alt.Tooltip(
                 "average_relevance:Q",
                 title="Avg. relevance",
@@ -337,7 +327,8 @@ It combines four factors:
 - **Source breadth — max 20 points:** 2 points per unique source.
 - **Relevance — max 20 points:** average relevance score from 0–10, multiplied by 2.
 
-The score is designed specifically for this Communication Monitor and is **not an external industry benchmark**.
+The score is designed specifically for this Communication Monitor and is
+**not an external industry benchmark**.
         """
     )
 
@@ -361,8 +352,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-# Maximum 6 strongest trends
 
 card_data = (
     active_trends
@@ -451,324 +440,327 @@ def render_flip_card(row):
 
     <head>
 
-    <style>
+        <style>
 
-        * {{
-            box-sizing: border-box;
-        }}
+            * {{
+                box-sizing: border-box;
+            }}
 
-        html,
-        body {{
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                Roboto,
-                Helvetica,
-                Arial,
-                sans-serif;
-        }}
+            html,
+            body {{
+                margin: 0;
+                padding: 0;
+                background: transparent;
 
+                font-family:
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    Helvetica,
+                    Arial,
+                    sans-serif;
+            }}
 
-        .flip-card {{
-            background-color: transparent;
-            width: 100%;
-            height: 300px;
-            perspective: 1200px;
-            cursor: pointer;
-        }}
 
+            .flip-card {{
+                background-color: transparent;
+                width: 100%;
+                height: 300px;
+                perspective: 1200px;
+                cursor: pointer;
+            }}
 
-        .flip-card-inner {{
-            position: relative;
-            width: 100%;
-            height: 100%;
 
-            transition:
-                transform 0.65s
-                cubic-bezier(
-                    0.4,
-                    0.2,
-                    0.2,
-                    1
-                );
+            .flip-card-inner {{
+                position: relative;
 
-            transform-style: preserve-3d;
-        }}
+                width: 100%;
+                height: 100%;
 
+                transition:
+                    transform 0.65s
+                    cubic-bezier(
+                        0.4,
+                        0.2,
+                        0.2,
+                        1
+                    );
 
-        .flip-card:hover
-        .flip-card-inner {{
+                transform-style: preserve-3d;
+            }}
 
-            transform:
-                rotateY(180deg);
-        }}
 
+            .flip-card:hover
+            .flip-card-inner {{
 
-        .flip-card-front,
-        .flip-card-back {{
+                transform:
+                    rotateY(180deg);
+            }}
 
-            position: absolute;
 
-            width: 100%;
-            height: 100%;
+            .flip-card-front,
+            .flip-card-back {{
 
-            top: 0;
-            left: 0;
+                position: absolute;
 
-            border-radius: 18px;
+                top: 0;
+                left: 0;
 
-            padding: 28px;
+                width: 100%;
+                height: 100%;
 
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
+                padding: 28px;
 
-            box-shadow:
-                0 6px 18px
-                rgba(
-                    22,
-                    61,
-                    115,
-                    0.08
-                );
-        }}
+                border-radius: 18px;
 
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
 
-        .flip-card-front {{
+                box-shadow:
+                    0 6px 18px
+                    rgba(
+                        22,
+                        61,
+                        115,
+                        0.08
+                    );
+            }}
 
-            background: #ffffff;
 
-            border:
-                1px solid
-                #e3eaf3;
-        }}
+            .flip-card-front {{
 
+                background:
+                    #ffffff;
 
-        .flip-card-back {{
+                border:
+                    1px solid
+                    #e3eaf3;
+            }}
 
-            background:
-                #163d73;
 
-            color:
-                #ffffff;
+            .flip-card-back {{
 
-            transform:
-                rotateY(180deg);
+                background:
+                    #163d73;
 
-            border:
-                1px solid
-                #163d73;
-        }}
+                color:
+                    #ffffff;
 
+                border:
+                    1px solid
+                    #163d73;
 
-        .category {{
+                transform:
+                    rotateY(180deg);
+            }}
 
-            color:
-                #6282ad;
 
-            font-size:
-                12px;
+            .category {{
 
-            font-weight:
-                700;
+                color:
+                    #6282ad;
 
-            text-transform:
-                uppercase;
+                font-size:
+                    12px;
 
-            letter-spacing:
-                0.8px;
+                font-weight:
+                    700;
 
-            margin-bottom:
-                12px;
-        }}
+                text-transform:
+                    uppercase;
 
+                letter-spacing:
+                    0.8px;
 
-        .trend {{
+                margin-bottom:
+                    12px;
+            }}
 
-            color:
-                #163d73;
 
-            font-size:
-                23px;
+            .trend {{
 
-            line-height:
-                1.25;
+                color:
+                    #163d73;
 
-            font-weight:
-                700;
+                font-size:
+                    23px;
 
-            min-height:
-                60px;
-        }}
+                line-height:
+                    1.25;
 
+                font-weight:
+                    700;
 
-        .strength-label {{
+                min-height:
+                    60px;
+            }}
 
-            color:
-                #7a8797;
 
-            font-size:
-                12px;
+            .strength-label {{
 
-            font-weight:
-                600;
+                color:
+                    #7a8797;
 
-            letter-spacing:
-                0.5px;
+                font-size:
+                    12px;
 
-            margin-top:
-                22px;
-        }}
+                font-weight:
+                    600;
 
+                letter-spacing:
+                    0.5px;
 
-        .strength {{
+                margin-top:
+                    22px;
+            }}
 
-            color:
-                #163d73;
 
-            font-size:
-                52px;
+            .strength {{
 
-            line-height:
-                1;
+                color:
+                    #163d73;
 
-            font-weight:
-                750;
+                font-size:
+                    52px;
 
-            margin-top:
-                5px;
-        }}
+                line-height:
+                    1;
 
+                font-weight:
+                    750;
 
-        .out-of {{
+                margin-top:
+                    5px;
+            }}
 
-            color:
-                #98a2b3;
 
-            font-size:
-                16px;
+            .out-of {{
 
-            font-weight:
-                500;
-        }}
+                color:
+                    #98a2b3;
 
+                font-size:
+                    16px;
 
-        .metrics {{
+                font-weight:
+                    500;
+            }}
 
-            color:
-                #667085;
 
-            font-size:
-                14px;
+            .metrics {{
 
-            margin-top:
-                17px;
-        }}
+                color:
+                    #667085;
 
+                font-size:
+                    14px;
 
-        .back-title {{
+                margin-top:
+                    17px;
+            }}
 
-            font-size:
-                21px;
 
-            font-weight:
-                700;
+            .back-title {{
 
-            margin-bottom:
-                19px;
-        }}
+                font-size:
+                    21px;
 
+                font-weight:
+                    700;
 
-        .score-row {{
+                margin-bottom:
+                    18px;
+            }}
 
-            display:
-                flex;
 
-            justify-content:
-                space-between;
+            .score-row {{
 
-            align-items:
-                center;
+                display:
+                    flex;
 
-            padding:
-                7px 0;
+                justify-content:
+                    space-between;
 
-            font-size:
-                14px;
+                align-items:
+                    center;
 
-            border-bottom:
-                1px solid
-                rgba(
-                    255,
-                    255,
-                    255,
-                    0.10
-                );
-        }}
+                padding:
+                    7px 0;
 
+                font-size:
+                    14px;
 
-        .score-value {{
+                border-bottom:
+                    1px solid
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.10
+                    );
+            }}
 
-            font-weight:
-                700;
-        }}
 
+            .score-value {{
 
-        .detail {{
+                font-weight:
+                    700;
+            }}
 
-            margin-top:
-                14px;
 
-            color:
-                rgba(
-                    255,
-                    255,
-                    255,
-                    0.75
-                );
+            .detail {{
 
-            font-size:
-                12px;
+                margin-top:
+                    14px;
 
-            line-height:
-                1.5;
-        }}
+                color:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.76
+                    );
 
+                font-size:
+                    12px;
 
-        .total {{
+                line-height:
+                    1.5;
+            }}
 
-            display:
-                flex;
 
-            justify-content:
-                space-between;
+            .total {{
 
-            margin-top:
-                15px;
+                display:
+                    flex;
 
-            padding-top:
-                13px;
+                justify-content:
+                    space-between;
 
-            border-top:
-                1px solid
-                rgba(
-                    255,
-                    255,
-                    255,
-                    0.35
-                );
+                margin-top:
+                    14px;
 
-            font-size:
-                15px;
+                padding-top:
+                    12px;
 
-            font-weight:
-                700;
-        }}
+                border-top:
+                    1px solid
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.35
+                    );
 
-    </style>
+                font-size:
+                    15px;
+
+                font-weight:
+                    700;
+            }}
+
+        </style>
 
     </head>
 
@@ -809,18 +801,15 @@ def render_flip_card(row):
 
                     <div class="metrics">
 
-                        WoW:
-                        {wow}
+                        WoW: {wow}
 
                         &nbsp; · &nbsp;
 
-                        {signals}
-                        signals
+                        {signals} signals
 
                         &nbsp; · &nbsp;
 
-                        {sources}
-                        sources
+                        {sources} sources
 
                     </div>
 
@@ -986,8 +975,7 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Public sources currently represented
-        in the monitored dataset.
+        Public sources included in the Communication Monitor.
     </div>
     """,
     unsafe_allow_html=True,
@@ -1011,31 +999,56 @@ if (
     ]
 
 
-    for _, row in source_counts.iterrows():
+    # Two-column source layout
 
-        source_name = html.escape(
-            str(
-                row["source"]
-            )
+    for i in range(
+        0,
+        len(source_counts),
+        2,
+    ):
+
+        source_col1, source_col2 = st.columns(
+            2,
+            gap="large",
         )
 
-        st.markdown(
-            f"""
-            <div class="source-box">
 
-                <div class="source-name">
-                    {source_name}
-                </div>
+        with source_col1:
 
-                <div class="source-count">
-                    {int(row["articles"])}
-                    collected articles
-                </div>
+            row = source_counts.iloc[i]
 
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            with st.container(
+                border=True
+            ):
+
+                st.markdown(
+                    f"**{row['source']}**"
+                )
+
+                st.caption(
+                    f"{int(row['articles'])} collected articles"
+                )
+
+
+        if i + 1 < len(source_counts):
+
+            with source_col2:
+
+                row = source_counts.iloc[
+                    i + 1
+                ]
+
+                with st.container(
+                    border=True
+                ):
+
+                    st.markdown(
+                        f"**{row['source']}**"
+                    )
+
+                    st.caption(
+                        f"{int(row['articles'])} collected articles"
+                    )
 
 
 else:
