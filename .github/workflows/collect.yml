@@ -31,14 +31,12 @@ jobs:
       - name: Analyze articles
         run: python analyzer.py
 
-        
-
       - name: Save collected data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-        git add data/articles.csv data/analyzed_articles.csv
+          git add data/articles.csv data/analyzed_articles.csv
 
           if git diff --cached --quiet; then
             echo "No new articles to save."
