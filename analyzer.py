@@ -3,295 +3,688 @@ import re
 import pandas as pd
 
 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
 INPUT_FILE = "data/articles.csv"
 OUTPUT_FILE = "data/analyzed_articles.csv"
 
-CATEGORIES = {
-    "AI & Technology": [
-        "artificial intelligence", "ai ", " ai", "kunstig intelligens",
-        "ai act", "deepfake", "deepfakes", "digitalisering",
-        "cyber", "data", "automation", "automatisering",
-        "digital transformation", "teknologi"
-    ],
-
-    "Tax": [
-        "tax", "skat", "moms", "vat", "customs", "told",
-        "transfer pricing", "e-invoicing", "e-invoice",
-        "e-fakturering", "taxation", "cbam"
-    ],
-
-    "Audit": [
-        "audit", "auditing", "revision", "revisor",
-        "assurance", "erklæring", "erklæringer",
-        "revisionsstandard", "revisionsstandarder"
-    ],
-
-    "Finance & CFO": [
-        "cfo", "finance", "financial reporting", "regnskab",
-        "årsrapport", "ifrs", "esrs", "csrd",
-        "sustainability reporting", "bæredygtighedsrapportering",
-        "forecast", "forecasting", "budget",
-        "erp", "controlling"
-    ],
-}
-
-
-TREND_RULES = {
-    "AI governance & regulation": [
-        "ai act", "ai regulation", "ai governance",
-        "kunstig intelligens", "forbudt ai",
-        "deepfake", "deepfakes"
-    ],
-
-    "Digital tax & e-invoicing": [
-        "e-invoicing", "e-invoice", "e-fakturering",
-        "digital tax", "vida", "vat in the digital age"
-    ],
-
-    "VAT & indirect tax": [
-        "vat", "moms", "indirect tax"
-    ],
-
-    "Audit & assurance": [
-        "audit", "revision", "revisor",
-        "assurance", "erklæring", "erklæringer"
-    ],
-
-    "Sustainability reporting": [
-        "esg", "csrd", "esrs",
-        "sustainability reporting",
-        "bæredygtighed", "bæredygtighedsrapportering"
-    ],
-
-    "Financial reporting": [
-        "financial reporting", "ifrs",
-        "årsrapport", "regnskab"
-    ],
-
-    "Finance transformation": [
-        "finance transformation", "cfo",
-        "automation", "automatisering",
-        "erp", "forecasting"
-    ],
-}
-
-
-NOISE_PHRASES = [
-    "spring hovednavigationen over",
-    "skip to main content",
-    "cookie",
-    "privacy policy",
-    "kontakt os",
-    "contact us",
-    "læs mere",
-    "read more",
+COLUMNS_REQUIRED = [
+    "source",
+    "title",
+    "url",
 ]
 
 
+# ============================================================
+# CATEGORY RULES
+#
+# Regex allows us to recognise Danish word families.
+#
+# Example:
+# skatt\w* matches:
+# skat, skatteudspil, skatteregler, skattelovgivning etc.
+# ============================================================
+
+CATEGORY_RULES = {
+
+    "Tax": [
+        r"\bskat\w*",
+        r"\bskatt\w*",
+        r"\bbeskat\w*",
+        r"\bmoms\w*",
+        r"\bafgift\w*",
+        r"\btold\w*",
+        r"\btax\w*",
+        r"\bvat\b",
+        r"\bcustoms?\b",
+        r"\btransfer pricing\b",
+        r"\bcbam\b",
+        r"\bvida\b",
+        r"\be[- ]?faktur\w*",
+        r"\be[- ]?invoic\w*",
+        r"\bindirect tax\w*",
+        r"\bcorporate tax\w*",
+    ],
+
+    "Audit": [
+        r"\brevision\w*",
+        r"\brevisor\w*",
+        r"\brevisionsnævn\w*",
+        r"\berklæring\w*",
+        r"\berklær\w*",
+        r"\baudit\w*",
+        r"\bauditor\w*",
+        r"\bassurance\b",
+        r"\bkontrolstandard\w*",
+        r"\brevisionsstandard\w*",
+        r"\bISA\b",
+    ],
+
+    "Finance & CFO": [
+        r"\bcfo\b",
+        r"\bfinance\b",
+        r"\bfinancial\w*",
+        r"\bfinans\w*",
+        r"\bregnskab\w*",
+        r"\bårsrapport\w*",
+        r"\bbudget\w*",
+        r"\bforecast\w*",
+        r"\bøkonomi\w*",
+        r"\bøkonomisk\w*",
+        r"\brapportering\w*",
+        r"\breporting\b",
+        r"\bifrs\b",
+        r"\besrs\b",
+        r"\bcsrd\b",
+        r"\besg\b",
+        r"\bbæredygtighed\w*",
+        r"\bsustainability\w*",
+        r"\berp\b",
+        r"\bcontrolling\b",
+        r"\bcontroller\w*",
+        r"\bcash flow\b",
+        r"\blikviditet\w*",
+    ],
+
+    "AI & Technology": [
+        r"\bai\b",
+        r"\bai act\b",
+        r"\bkunstig intelligens\b",
+        r"\bartificial intelligence\b",
+        r"\bgenerative ai\b",
+        r"\bgenai\b",
+        r"\bmachine learning\b",
+        r"\bdeepfake\w*",
+        r"\bautomatisering\w*",
+        r"\bautomation\b",
+        r"\bdigitalisering\w*",
+        r"\bdigital transformation\b",
+        r"\bcyber\w*",
+        r"\bdatasikkerhed\w*",
+        r"\bdata governance\b",
+        r"\bdigital\w*",
+        r"\bteknologi\w*",
+        r"\btechnology\b",
+    ],
+}
+
+
+# ============================================================
+# TREND RULES
+# ============================================================
+
+TREND_RULES = {
+
+    "AI governance & regulation": [
+        r"\bai act\b",
+        r"\bai governance\b",
+        r"\bai regulation\b",
+        r"\bkunstig intelligens\b",
+        r"\bforbudt\w* ai\b",
+        r"\bdeepfake\w*",
+        r"\bai[- ]?regulering\w*",
+    ],
+
+    "AI adoption & automation": [
+        r"\bgenerative ai\b",
+        r"\bgenai\b",
+        r"\bautomation\b",
+        r"\bautomatisering\w*",
+        r"\bmachine learning\b",
+    ],
+
+    "Digital tax & e-invoicing": [
+        r"\be[- ]?faktur\w*",
+        r"\be[- ]?invoic\w*",
+        r"\bdigital tax\b",
+        r"\bvida\b",
+        r"\bvat in the digital age\b",
+    ],
+
+    "VAT & indirect tax": [
+        r"\bmoms\w*",
+        r"\bvat\b",
+        r"\bindirect tax\w*",
+        r"\bafgift\w*",
+    ],
+
+    "Corporate tax": [
+        r"\bcorporate tax\w*",
+        r"\bselskabsskat\w*",
+        r"\bbeskat\w*",
+        r"\bskatt\w*",
+        r"\bskat\w*",
+    ],
+
+    "Customs & trade": [
+        r"\btold\w*",
+        r"\bcustoms?\b",
+        r"\bcbam\b",
+    ],
+
+    "Audit & assurance": [
+        r"\brevision\w*",
+        r"\brevisor\w*",
+        r"\baudit\w*",
+        r"\bassurance\b",
+        r"\berklæring\w*",
+    ],
+
+    "Sustainability reporting": [
+        r"\besg\b",
+        r"\bcsrd\b",
+        r"\besrs\b",
+        r"\bbæredygtighed\w*",
+        r"\bsustainability reporting\b",
+    ],
+
+    "Financial reporting": [
+        r"\bfinancial reporting\b",
+        r"\bifrs\b",
+        r"\bregnskab\w*",
+        r"\bårsrapport\w*",
+        r"\brapportering\w*",
+    ],
+
+    "Finance transformation": [
+        r"\bcfo\b",
+        r"\bfinance transformation\b",
+        r"\berp\b",
+        r"\bforecast\w*",
+        r"\bcontrolling\b",
+        r"\bautomatisering\w*",
+    ],
+
+    "Cyber & data governance": [
+        r"\bcyber\w*",
+        r"\bdatasikkerhed\w*",
+        r"\bdata governance\b",
+    ],
+}
+
+
+# ============================================================
+# NOISE
+#
+# Only obvious technical/navigation content is removed.
+# We deliberately keep uncertain articles for Review.
+# ============================================================
+
+NOISE_PATTERNS = [
+    r"^spring hovednavigationen over$",
+    r"^skip to main content$",
+    r"^skip navigation$",
+    r"^kontakt os$",
+    r"^contact us$",
+    r"^cookie settings$",
+    r"^privacy policy$",
+    r"^privatlivspolitik$",
+    r"^tilbage$",
+    r"^back$",
+    r"^menu$",
+    r"^søg$",
+    r"^search$",
+]
+
+
+# ============================================================
+# TEXT CLEANING
+# ============================================================
+
 def fix_encoding(text):
     """
-    Attempts to repair common UTF-8/mojibake problems,
-    e.g. bÃ¦redygtighed -> bæredygtighed.
+    Repair common encoding problems such as:
+    bÃ¦redygtighed -> bæredygtighed
     """
+
     if pd.isna(text):
         return ""
 
     text = str(text)
 
-    if any(marker in text for marker in ["Ã", "Â", "â€"]):
+    suspicious = [
+        "Ã",
+        "Â",
+        "â€",
+        "ðŸ",
+    ]
+
+    if any(marker in text for marker in suspicious):
         try:
-            text = text.encode("latin1").decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
+            text = (
+                text
+                .encode("latin1")
+                .decode("utf-8")
+            )
+        except (
+            UnicodeEncodeError,
+            UnicodeDecodeError,
+        ):
             pass
 
-    return re.sub(r"\s+", " ", text).strip()
+    return re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
 
+
+def normalize_text(text):
+    """
+    Lowercase text while preserving Danish letters.
+    """
+
+    text = fix_encoding(text)
+
+    return text.lower().strip()
+
+
+# ============================================================
+# NOISE DETECTION
+# ============================================================
 
 def is_noise(title):
-    """Remove obvious navigation/system content."""
-    title_lower = title.lower().strip()
 
-    if len(title_lower) < 12:
+    text = normalize_text(title)
+
+    if not text:
         return True
 
-    for phrase in NOISE_PHRASES:
-        if phrase in title_lower:
+    for pattern in NOISE_PATTERNS:
+
+        if re.search(
+            pattern,
+            text,
+            flags=re.IGNORECASE,
+        ):
             return True
 
     return False
 
 
-def keyword_matches(text, keywords):
-    """Return the keywords found in a text."""
-    text = text.lower()
+# ============================================================
+# PATTERN MATCHING
+# ============================================================
 
-    return [
-        keyword
-        for keyword in keywords
-        if keyword.lower() in text
-    ]
+def find_matches(text, patterns):
+
+    matches = []
+
+    for pattern in patterns:
+
+        if re.search(
+            pattern,
+            text,
+            flags=re.IGNORECASE,
+        ):
+            matches.append(pattern)
+
+    return matches
 
 
-def classify_category(title):
-    """
-    Find the category with the strongest keyword match.
-    """
-    scores = {}
+# ============================================================
+# CATEGORY CLASSIFICATION
+# ============================================================
 
-    for category, keywords in CATEGORIES.items():
-        matches = keyword_matches(title, keywords)
-        scores[category] = len(matches)
+def classify_categories(title):
 
-    best_category = max(scores, key=scores.get)
+    text = normalize_text(title)
 
-    if scores[best_category] == 0:
-        return "Other", 0
+    results = {}
 
-    return best_category, scores[best_category]
+    for category, patterns in CATEGORY_RULES.items():
 
+        matches = find_matches(
+            text,
+            patterns,
+        )
+
+        if matches:
+            results[category] = matches
+
+    if not results:
+        return (
+            "Unclassified",
+            "",
+            0,
+        )
+
+    sorted_categories = sorted(
+        results.items(),
+        key=lambda item: len(item[1]),
+        reverse=True,
+    )
+
+    primary_category = sorted_categories[0][0]
+
+    all_categories = " | ".join(
+        category
+        for category, _ in sorted_categories
+    )
+
+    total_matches = sum(
+        len(matches)
+        for matches in results.values()
+    )
+
+    return (
+        primary_category,
+        all_categories,
+        total_matches,
+    )
+
+
+# ============================================================
+# TREND CLASSIFICATION
+# ============================================================
 
 def classify_trend(title):
-    """
-    Assign a more specific communication trend.
-    """
-    scores = {}
 
-    for trend, keywords in TREND_RULES.items():
-        matches = keyword_matches(title, keywords)
-        scores[trend] = len(matches)
+    text = normalize_text(title)
 
-    best_trend = max(scores, key=scores.get)
+    results = {}
 
-    if scores[best_trend] == 0:
-        return "Other"
+    for trend, patterns in TREND_RULES.items():
 
-    return best_trend
+        matches = find_matches(
+            text,
+            patterns,
+        )
+
+        if matches:
+            results[trend] = len(matches)
+
+    if not results:
+        return "Unclassified"
+
+    return max(
+        results,
+        key=results.get,
+    )
 
 
-def calculate_relevance(category_matches, trend):
-    """
-    Transparent first-pass relevance score.
+# ============================================================
+# RELEVANCE
+#
+# IMPORTANT:
+# This is an internal transparent score.
+# It is NOT an external industry benchmark.
+# ============================================================
 
-    0 = no detected relevance
-    10 = strong match
+def calculate_relevance(
+    match_count,
+    trend,
+):
 
-    This is an internal Communication Monitor score,
-    not an external benchmark.
-    """
-    if category_matches == 0:
+    if match_count == 0:
         return 0.0
 
+    # One genuine domain match already indicates
+    # possible communication relevance.
     score = 4.0
 
-    score += min(category_matches, 3) * 1.5
+    # Additional independent signals strengthen it.
+    score += min(
+        match_count,
+        4,
+    ) * 1.0
 
-    if trend != "Other":
-        score += 1.5
+    # Recognisable trend gives additional confidence.
+    if trend != "Unclassified":
+        score += 1.0
 
-    return min(round(score, 1), 10.0)
+    return min(
+        round(score, 1),
+        10.0,
+    )
 
+
+# ============================================================
+# STATUS
+#
+# Relevant:
+# We have enough evidence to classify it.
+#
+# Review:
+# It may still be useful, but rules could not
+# confidently classify it.
+#
+# Noise:
+# Obvious navigation / technical content.
+# ============================================================
+
+def determine_status(
+    noise,
+    category,
+    relevance,
+):
+
+    if noise:
+        return "Noise"
+
+    if (
+        category != "Unclassified"
+        and relevance >= 5
+    ):
+        return "Relevant"
+
+    return "Review"
+
+
+# ============================================================
+# MAIN ANALYSIS
+# ============================================================
 
 def analyze_articles():
+
     if not os.path.exists(INPUT_FILE):
+
         raise FileNotFoundError(
-            f"{INPUT_FILE} does not exist. Run collector.py first."
+            f"{INPUT_FILE} does not exist. "
+            "Run collector.py first."
         )
 
     df = pd.read_csv(INPUT_FILE)
 
-    required_columns = ["source", "title", "url"]
+    for column in COLUMNS_REQUIRED:
 
-    for column in required_columns:
         if column not in df.columns:
+
             raise ValueError(
-                f"Missing required column: {column}"
+                f"Missing required column: "
+                f"{column}"
             )
 
-    # Fix text encoding
-    df["title"] = df["title"].apply(fix_encoding)
-    df["source"] = df["source"].apply(fix_encoding)
+    # --------------------------------------------------------
+    # CLEAN TEXT
+    # --------------------------------------------------------
 
-    # Identify obvious noise
-    df["is_noise"] = df["title"].apply(is_noise)
+    df["title"] = (
+        df["title"]
+        .apply(fix_encoding)
+    )
 
-    categories = []
-    match_counts = []
-    trends = []
-    relevance_scores = []
+    df["source"] = (
+        df["source"]
+        .apply(fix_encoding)
+    )
+
+    # --------------------------------------------------------
+    # ANALYSE EVERY ARTICLE
+    # --------------------------------------------------------
+
+    rows = []
 
     for _, row in df.iterrows():
+
         title = row["title"]
 
-        if row["is_noise"]:
-            categories.append("Noise")
-            match_counts.append(0)
-            trends.append("Noise")
-            relevance_scores.append(0.0)
-            continue
+        noise = is_noise(title)
 
-        category, match_count = classify_category(title)
-        trend = classify_trend(title)
+        if noise:
 
-        relevance = calculate_relevance(
-            match_count,
-            trend
+            primary_category = "Noise"
+            categories = "Noise"
+            match_count = 0
+            trend = "Noise"
+            relevance = 0.0
+            status = "Noise"
+
+        else:
+
+            (
+                primary_category,
+                categories,
+                match_count,
+            ) = classify_categories(title)
+
+            trend = classify_trend(title)
+
+            relevance = calculate_relevance(
+                match_count,
+                trend,
+            )
+
+            status = determine_status(
+                noise,
+                primary_category,
+                relevance,
+            )
+
+        result = row.to_dict()
+
+        result.update({
+            "status": status,
+            "primary_category": primary_category,
+            "categories": categories,
+            "keyword_matches": match_count,
+            "trend": trend,
+            "relevance": relevance,
+        })
+
+        rows.append(result)
+
+    analyzed_df = pd.DataFrame(rows)
+
+    # --------------------------------------------------------
+    # SORT
+    #
+    # Relevant first, then Review, then Noise.
+    # --------------------------------------------------------
+
+    status_order = {
+        "Relevant": 0,
+        "Review": 1,
+        "Noise": 2,
+    }
+
+    analyzed_df["_status_order"] = (
+        analyzed_df["status"]
+        .map(status_order)
+    )
+
+    analyzed_df = analyzed_df.sort_values(
+        by=[
+            "_status_order",
+            "relevance",
+        ],
+        ascending=[
+            True,
+            False,
+        ],
+    )
+
+    analyzed_df = analyzed_df.drop(
+        columns=["_status_order"]
+    )
+
+    # --------------------------------------------------------
+    # SAVE
+    # --------------------------------------------------------
+
+    os.makedirs(
+        "data",
+        exist_ok=True,
+    )
+
+    analyzed_df.to_csv(
+        OUTPUT_FILE,
+        index=False,
+    )
+
+    # --------------------------------------------------------
+    # REPORT
+    # --------------------------------------------------------
+
+    print(
+        f"\nAnalyzed "
+        f"{len(analyzed_df)} articles."
+    )
+
+    print("\nStatus:")
+
+    for status, count in (
+        analyzed_df["status"]
+        .value_counts()
+        .items()
+    ):
+
+        print(
+            f"  {status}: {count}"
         )
 
-        categories.append(category)
-        match_counts.append(match_count)
-        trends.append(trend)
-        relevance_scores.append(relevance)
-
-    df["category"] = categories
-    df["keyword_matches"] = match_counts
-    df["trend"] = trends
-    df["relevance"] = relevance_scores
-
-    # Relevant means we detected a category
-    # and the row was not navigation/noise.
-    df["relevant"] = (
-        (~df["is_noise"])
-        & (df["category"] != "Other")
-        & (df["relevance"] > 0)
-    )
-
-    os.makedirs("data", exist_ok=True)
-
-    df.to_csv(
-        OUTPUT_FILE,
-        index=False
-    )
+    relevant_df = analyzed_df[
+        analyzed_df["status"]
+        == "Relevant"
+    ]
 
     print(
-        f"Analyzed {len(df)} articles."
+        "\nRelevant articles "
+        "by primary category:"
     )
-
-    print(
-        f"Relevant: {df['relevant'].sum()}"
-    )
-
-    print(
-        f"Noise: {df['is_noise'].sum()}"
-    )
-
-    print("\nRelevant articles by category:")
-
-    relevant_df = df[df["relevant"]]
 
     if relevant_df.empty:
-        print("  No relevant articles detected.")
+
+        print(
+            "  No relevant articles detected."
+        )
+
     else:
+
         for category, count in (
-            relevant_df["category"]
+            relevant_df[
+                "primary_category"
+            ]
             .value_counts()
             .items()
         ):
-            print(f"  {category}: {count}")
+
+            print(
+                f"  {category}: {count}"
+            )
+
+    review_count = (
+        analyzed_df["status"]
+        == "Review"
+    ).sum()
 
     print(
-        f"\nSaved results to {OUTPUT_FILE}"
+        f"\nArticles kept for review: "
+        f"{review_count}"
+    )
+
+    print(
+        f"\nSaved analysis to "
+        f"{OUTPUT_FILE}"
     )
 
 
+# ============================================================
+# RUN
+# ============================================================
+
 if __name__ == "__main__":
+
     analyze_articles()
