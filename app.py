@@ -1,6 +1,8 @@
 import os
+import html
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import altair as alt
 
 
@@ -24,7 +26,7 @@ ARTICLE_FILE = "data/analyzed_articles.csv"
 
 
 # ============================================================
-# DESIGN
+# GENERAL DESIGN
 # ============================================================
 
 st.markdown(
@@ -73,61 +75,6 @@ st.markdown(
         margin-bottom: 20px;
     }
 
-    .trend-card {
-        background: white;
-        border: 1px solid #e3eaf3;
-        border-radius: 18px;
-        padding: 27px;
-        min-height: 225px;
-        box-shadow: 0 6px 18px rgba(22, 61, 115, 0.07);
-        margin-bottom: 10px;
-    }
-
-    .category-label {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #6282ad;
-        margin-bottom: 10px;
-    }
-
-    .trend-name {
-        color: #163d73;
-        font-size: 22px;
-        line-height: 1.25;
-        font-weight: 700;
-        min-height: 55px;
-    }
-
-    .strength-label {
-        color: #7a8797;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.4px;
-        margin-top: 20px;
-    }
-
-    .strength-number {
-        color: #163d73;
-        font-size: 48px;
-        font-weight: 750;
-        line-height: 1.05;
-        margin-top: 3px;
-    }
-
-    .strength-max {
-        color: #98a2b3;
-        font-size: 16px;
-        font-weight: 500;
-    }
-
-    .metrics-line {
-        color: #667085;
-        font-size: 14px;
-        margin-top: 14px;
-    }
-
     .source-box {
         background: white;
         border: 1px solid #e3eaf3;
@@ -152,7 +99,6 @@ st.markdown(
         background: white;
         border: 1px solid #e3eaf3;
         border-radius: 12px;
-        margin-bottom: 20px;
     }
 
     </style>
@@ -187,7 +133,9 @@ def load_trends():
     ]
 
     for column in numeric_columns:
+
         if column in df.columns:
+
             df[column] = pd.to_numeric(
                 df[column],
                 errors="coerce",
@@ -230,20 +178,21 @@ st.markdown(
 
 
 # ============================================================
-# CHECK DATA
+# DATA CHECK
 # ============================================================
 
 if trends.empty:
 
     st.warning(
         "No trend data is available yet. "
-        "Run the Weekly Data Collection workflow to generate data/trends.csv."
+        "Run the Weekly Data Collection workflow "
+        "to generate data/trends.csv."
     )
 
     st.stop()
 
 
-# Only show trends with signals in the latest monitored week
+# Only trends active in the latest monitored week
 
 active_trends = trends[
     trends["signals"] > 0
@@ -258,7 +207,8 @@ active_trends = active_trends.sort_values(
 if active_trends.empty:
 
     st.info(
-        "No active trends were detected in the latest monitored week."
+        "No active trends were detected "
+        "in the latest monitored week."
     )
 
     st.stop()
@@ -276,7 +226,8 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Trendscore is the combined trend strength based on four different factors.
+        Trendscore is the combined trend strength
+        based on four different factors.
     </div>
     """,
     unsafe_allow_html=True,
@@ -403,14 +354,15 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Strongest communication-relevant signals detected in the latest monitored week.
+        Hover over a card to see the calculation
+        behind its Trend Strength.
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 
-# Maximum six cards
+# Maximum 6 strongest trends
 
 card_data = (
     active_trends
@@ -418,6 +370,10 @@ card_data = (
     .reset_index(drop=True)
 )
 
+
+# ============================================================
+# HELPERS
+# ============================================================
 
 def format_wow(value):
 
@@ -430,75 +386,562 @@ def format_wow(value):
     return "0.0%"
 
 
-def render_card(row):
+def safe_text(value):
+
+    return html.escape(
+        str(value)
+    )
+
+
+# ============================================================
+# FLIP CARD
+# ============================================================
+
+def render_flip_card(row):
+
+    category = safe_text(
+        row["category"]
+    )
+
+    trend = safe_text(
+        row["trend"]
+    )
 
     wow = format_wow(
         row["wow_growth_pct"]
     )
 
-    st.markdown(
-        f"""
-        <div class="trend-card">
+    signals = int(
+        row["signals"]
+    )
 
-            <div class="category-label">
-                {row["category"]}
-            </div>
+    sources = int(
+        row["sources"]
+    )
 
-            <div class="trend-name">
-                {row["trend"]}
-            </div>
+    strength = float(
+        row["trend_strength"]
+    )
 
-            <div class="strength-label">
-                TREND STRENGTH
-            </div>
+    volume_points = float(
+        row["volume_points"]
+    )
 
-            <div class="strength-number">
-                {row["trend_strength"]:.1f}
-                <span class="strength-max">
-                    / 100
-                </span>
-            </div>
+    growth_points = float(
+        row["growth_points"]
+    )
 
-            <div class="metrics-line">
-                WoW: {wow}
-                &nbsp;&nbsp;·&nbsp;&nbsp;
-                {int(row["signals"])} signals
-                &nbsp;&nbsp;·&nbsp;&nbsp;
-                {int(row["sources"])} sources
+    source_points = float(
+        row["source_points"]
+    )
+
+    relevance_points = float(
+        row["relevance_points"]
+    )
+
+    average_relevance = float(
+        row["average_relevance"]
+    )
+
+
+    card_html = f"""
+    <!DOCTYPE html>
+
+    <html>
+
+    <head>
+
+    <style>
+
+        * {{
+            box-sizing: border-box;
+        }}
+
+        html,
+        body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Helvetica,
+                Arial,
+                sans-serif;
+        }}
+
+
+        .flip-card {{
+            background-color: transparent;
+            width: 100%;
+            height: 300px;
+            perspective: 1200px;
+            cursor: pointer;
+        }}
+
+
+        .flip-card-inner {{
+            position: relative;
+            width: 100%;
+            height: 100%;
+
+            transition:
+                transform 0.65s
+                cubic-bezier(
+                    0.4,
+                    0.2,
+                    0.2,
+                    1
+                );
+
+            transform-style: preserve-3d;
+        }}
+
+
+        .flip-card:hover
+        .flip-card-inner {{
+
+            transform:
+                rotateY(180deg);
+        }}
+
+
+        .flip-card-front,
+        .flip-card-back {{
+
+            position: absolute;
+
+            width: 100%;
+            height: 100%;
+
+            top: 0;
+            left: 0;
+
+            border-radius: 18px;
+
+            padding: 28px;
+
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+
+            box-shadow:
+                0 6px 18px
+                rgba(
+                    22,
+                    61,
+                    115,
+                    0.08
+                );
+        }}
+
+
+        .flip-card-front {{
+
+            background: #ffffff;
+
+            border:
+                1px solid
+                #e3eaf3;
+        }}
+
+
+        .flip-card-back {{
+
+            background:
+                #163d73;
+
+            color:
+                #ffffff;
+
+            transform:
+                rotateY(180deg);
+
+            border:
+                1px solid
+                #163d73;
+        }}
+
+
+        .category {{
+
+            color:
+                #6282ad;
+
+            font-size:
+                12px;
+
+            font-weight:
+                700;
+
+            text-transform:
+                uppercase;
+
+            letter-spacing:
+                0.8px;
+
+            margin-bottom:
+                12px;
+        }}
+
+
+        .trend {{
+
+            color:
+                #163d73;
+
+            font-size:
+                23px;
+
+            line-height:
+                1.25;
+
+            font-weight:
+                700;
+
+            min-height:
+                60px;
+        }}
+
+
+        .strength-label {{
+
+            color:
+                #7a8797;
+
+            font-size:
+                12px;
+
+            font-weight:
+                600;
+
+            letter-spacing:
+                0.5px;
+
+            margin-top:
+                22px;
+        }}
+
+
+        .strength {{
+
+            color:
+                #163d73;
+
+            font-size:
+                52px;
+
+            line-height:
+                1;
+
+            font-weight:
+                750;
+
+            margin-top:
+                5px;
+        }}
+
+
+        .out-of {{
+
+            color:
+                #98a2b3;
+
+            font-size:
+                16px;
+
+            font-weight:
+                500;
+        }}
+
+
+        .metrics {{
+
+            color:
+                #667085;
+
+            font-size:
+                14px;
+
+            margin-top:
+                17px;
+        }}
+
+
+        .back-title {{
+
+            font-size:
+                21px;
+
+            font-weight:
+                700;
+
+            margin-bottom:
+                19px;
+        }}
+
+
+        .score-row {{
+
+            display:
+                flex;
+
+            justify-content:
+                space-between;
+
+            align-items:
+                center;
+
+            padding:
+                7px 0;
+
+            font-size:
+                14px;
+
+            border-bottom:
+                1px solid
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.10
+                );
+        }}
+
+
+        .score-value {{
+
+            font-weight:
+                700;
+        }}
+
+
+        .detail {{
+
+            margin-top:
+                14px;
+
+            color:
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.75
+                );
+
+            font-size:
+                12px;
+
+            line-height:
+                1.5;
+        }}
+
+
+        .total {{
+
+            display:
+                flex;
+
+            justify-content:
+                space-between;
+
+            margin-top:
+                15px;
+
+            padding-top:
+                13px;
+
+            border-top:
+                1px solid
+                rgba(
+                    255,
+                    255,
+                    255,
+                    0.35
+                );
+
+            font-size:
+                15px;
+
+            font-weight:
+                700;
+        }}
+
+    </style>
+
+    </head>
+
+
+    <body>
+
+
+        <div class="flip-card">
+
+            <div class="flip-card-inner">
+
+
+                <!-- FRONT -->
+
+                <div class="flip-card-front">
+
+                    <div class="category">
+                        {category}
+                    </div>
+
+                    <div class="trend">
+                        {trend}
+                    </div>
+
+                    <div class="strength-label">
+                        TREND STRENGTH
+                    </div>
+
+                    <div class="strength">
+
+                        {strength:.1f}
+
+                        <span class="out-of">
+                            / 100
+                        </span>
+
+                    </div>
+
+                    <div class="metrics">
+
+                        WoW:
+                        {wow}
+
+                        &nbsp; · &nbsp;
+
+                        {signals}
+                        signals
+
+                        &nbsp; · &nbsp;
+
+                        {sources}
+                        sources
+
+                    </div>
+
+                </div>
+
+
+                <!-- BACK -->
+
+                <div class="flip-card-back">
+
+                    <div class="back-title">
+                        Score calculation
+                    </div>
+
+
+                    <div class="score-row">
+
+                        <span>
+                            Volume
+                        </span>
+
+                        <span class="score-value">
+                            {volume_points:.1f} / 30
+                        </span>
+
+                    </div>
+
+
+                    <div class="score-row">
+
+                        <span>
+                            Growth
+                        </span>
+
+                        <span class="score-value">
+                            {growth_points:.1f} / 30
+                        </span>
+
+                    </div>
+
+
+                    <div class="score-row">
+
+                        <span>
+                            Source breadth
+                        </span>
+
+                        <span class="score-value">
+                            {source_points:.1f} / 20
+                        </span>
+
+                    </div>
+
+
+                    <div class="score-row">
+
+                        <span>
+                            Relevance
+                        </span>
+
+                        <span class="score-value">
+                            {relevance_points:.1f} / 20
+                        </span>
+
+                    </div>
+
+
+                    <div class="detail">
+
+                        {signals} relevant signals
+                        · {sources} unique sources
+
+                        <br>
+
+                        Average relevance:
+                        {average_relevance:.1f} / 10
+
+                        <br>
+
+                        Week-over-week:
+                        {wow}
+
+                    </div>
+
+
+                    <div class="total">
+
+                        <span>
+                            Trend Strength
+                        </span>
+
+                        <span>
+                            {strength:.1f} / 100
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
             </div>
 
         </div>
-        """,
-        unsafe_allow_html=True,
+
+
+    </body>
+
+    </html>
+    """
+
+
+    components.html(
+        card_html,
+        height=320,
+        scrolling=False,
     )
-
-    with st.expander(
-        "Show calculation"
-    ):
-
-        st.markdown(
-            f"""
-**Volume:** {row["volume_points"]:.1f} / 30  
-{int(row["signals"])} relevant signals in the latest monitored week.
-
-**Growth:** {row["growth_points"]:.1f} / 30  
-WoW change: **{wow}**
-
-**Source breadth:** {row["source_points"]:.1f} / 20  
-{int(row["sources"])} unique sources.
-
-**Relevance:** {row["relevance_points"]:.1f} / 20  
-Average relevance: **{row["average_relevance"]:.1f} / 10**
-
----
-
-**Trend Strength: {row["trend_strength"]:.1f} / 100**
-            """
-        )
 
 
 # ============================================================
-# 2 x 2 / 2-COLUMN LAYOUT
+# CARD GRID
 # ============================================================
 
 for i in range(
@@ -512,16 +955,22 @@ for i in range(
         gap="large",
     )
 
+
     with col1:
-        render_card(
+
+        render_flip_card(
             card_data.iloc[i]
         )
+
 
     if i + 1 < len(card_data):
 
         with col2:
-            render_card(
-                card_data.iloc[i + 1]
+
+            render_flip_card(
+                card_data.iloc[
+                    i + 1
+                ]
             )
 
 
@@ -537,7 +986,8 @@ st.markdown(
 st.markdown(
     """
     <div class="section-description">
-        Public sources currently represented in the monitored dataset.
+        Public sources currently represented
+        in the monitored dataset.
     </div>
     """,
     unsafe_allow_html=True,
@@ -560,14 +1010,21 @@ if (
         "articles",
     ]
 
+
     for _, row in source_counts.iterrows():
+
+        source_name = html.escape(
+            str(
+                row["source"]
+            )
+        )
 
         st.markdown(
             f"""
             <div class="source-box">
 
                 <div class="source-name">
-                    {row["source"]}
+                    {source_name}
                 </div>
 
                 <div class="source-count">
@@ -580,6 +1037,7 @@ if (
             unsafe_allow_html=True,
         )
 
+
 else:
 
     st.write(
@@ -588,7 +1046,7 @@ else:
 
 
 # ============================================================
-# METHODOLOGY
+# ABOUT
 # ============================================================
 
 with st.expander(
@@ -610,6 +1068,6 @@ Compares the latest monitored week with the previous week and calculates Trend S
 
 Articles classified as **Review**, **Noise**, or with an **Unclassified trend** do not contribute to Trend Strength.
 
-The Communication Monitor is intended as a communication and market-monitoring tool rather than an external statistical benchmark.
+The monitor is intended as a communication and market-monitoring tool rather than an external statistical benchmark.
         """
     )
