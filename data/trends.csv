@@ -1,6 +1,4 @@
 trend,category,signals,previous_signals,wow_growth_pct,sources,average_relevance,volume_points,growth_points,source_points,relevance_points,trend_strength
-Sustainability reporting,Finance & CFO,1,2,-50.0,1,7.0,1,0.0,2,14.0,17.0
-Corporate tax,Tax,0,1,-100.0,0,0.0,0,0.0,0,0.0,0.0
-Customs & trade,Tax,0,3,-100.0,0,0.0,0,0.0,0,0.0,0.0
-Digital tax & e-invoicing,Tax,0,1,-100.0,0,0.0,0,0.0,0,0.0,0.0
-Financial reporting,Finance & CFO,0,1,-100.0,0,0.0,0,0.0,0,0.0,0.0
+Sustainability reporting,Finance & CFO,1,2,-50.0,1,6.0,1,0.0,2,12.0,15.0
+Audit & assurance,Audit,0,2,-100.0,0,0.0,0,0.0,0,0.0,0.0
+VAT & indirect tax,Tax,0,1,-100.0,0,0.0,0,0.0,0,0.0,0.0
